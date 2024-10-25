@@ -1,0 +1,86 @@
+version: '3.8'
+services:
+  # Note that running systemd inside a Docker container requires the --privileged flag.
+  ubuntu-vm1:
+    build: ./ubuntu-vm
+    container_name: ubuntu-vm1
+    privileged: true
+    networks:
+      - lab-network
+
+  ubuntu-vm2:
+    build: ./ubuntu-vm
+    container_name: ubuntu-vm2
+    privileged: true
+    networks:
+      - lab-network
+
+  # To run ansible and other tools
+  toolbox-vm:
+    build: ./toolbox-vm
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml
+    ports:
+      - '9090:9090'
+    networks:
+      - lab-network
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - '3000:3000'
+    networks:
+      - lab-network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    volumes:
+      - ./alertmanager/config.yml:/etc/alertmanager/config.yml
+    ports:
+      - '9093:9093'
+    networks:
+      - lab-network
+
+  # Elasticsearch Service
+  elasticsearch:
+    build:
+      context: ./elk/elasticsearch
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - lab-network
+
+  # Logstash Service
+  logstash:
+    build:
+      context: ./elk/logstash
+    container_name: logstash
+    ports:
+      - "5044:5044"
+    networks:
+      - lab-network
+
+  # Kibana Service
+  kibana:
+    build:
+      context: ./elk/kibana
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    networks:
+      - lab-network
+
+# Network definition
+networks:
+  lab-network:
+    driver: bridge
